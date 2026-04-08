@@ -10,9 +10,9 @@ fn linkPlatformDeps(module: *std.Build.Module, os_tag: std.Target.Os.Tag) void {
             module.linkSystemLibrary("Advapi32", .{});
         },
         .linux => {
-            module.linkSystemLibrary("secret-1", .{
-                .use_pkg_config = .force,
-            });
+            module.link_libc = true;
+            module.linkSystemLibrary("libsecret-1", .{});
+            module.linkSystemLibrary("glib-2.0", .{});
         },
         else => {},
     }

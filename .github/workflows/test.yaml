@@ -22,4 +22,29 @@ jobs:
         with:
           version: ${{ env.ZIG_VERSION }}
 
-      - run: zig build --verbose --summary all test
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            dbus \
+            gnome-keyring \
+            libglib2.0-dev \
+            libsecret-1-dev \
+            libsecret-tools
+
+      - name: Run tests on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          dbus-run-session -- bash -lc '
+            eval "$(printf "\n" | gnome-keyring-daemon --unlock --components=secrets)"
+            secret-tool store --label="keyring-zig-ci-probe" service keyring-zig-ci account probe <<<'"'"'probe-value'"'"'
+            secret-tool lookup service keyring-zig-ci account probe
+            secret-tool clear service keyring-zig-ci account probe
+            zig build --verbose --summary all test
+          '
+
+      - name: Run tests
+        if: runner.os != 'Linux'
+        run: zig build --verbose --summary all test
