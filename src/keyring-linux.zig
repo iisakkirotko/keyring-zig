@@ -2,6 +2,10 @@ const std = @import("std");
 
 pub const KeyringLinux = @This();
 
+const service_max_len = 512;
+const key_max_len = 2048;
+const value_max_len = 16 * 1024;
+
 const GCancellable = opaque {};
 const GError = opaque {};
 const gboolean = c_int;
@@ -114,12 +118,12 @@ const KeyChainBufferGetError = KeyChainGetError || error{ BufferTooSmall, Servic
 /// Service and key have maximum length constraints (512 b and 2 kb respectively).
 /// If you may need larger values, use getAlloc instead.
 pub fn get(service: []const u8, key: []const u8, out_buf: []u8) KeyChainBufferGetError![]u8 {
-    if (service.len > 512) return error.ServiceTooLong;
-    if (key.len > 2048) return error.KeyTooLong;
+    if (service.len > service_max_len) return error.ServiceTooLong;
+    if (key.len > key_max_len) return error.KeyTooLong;
 
     // Make nul terminated copies of service and key
-    var service_buf: [512 + 1:0]u8 = undefined;
-    var key_buf: [2048 + 1:0]u8 = undefined;
+    var service_buf: [service_max_len + 1:0]u8 = undefined;
+    var key_buf: [key_max_len + 1:0]u8 = undefined;
 
     const c_service = toNulTerminatedChar(service, service_buf[0..]);
     const c_key = toNulTerminatedChar(key, key_buf[0..]);
@@ -159,14 +163,14 @@ pub fn getAlloc(gpa: std.mem.Allocator, service: []const u8, key: []const u8) Ke
 
 const KeyChainWriteError = error{ ServiceTooLong, KeyTooLong, ValueTooLong, KeyChainWriteError } || std.fmt.BufPrintError;
 pub fn set(service: []const u8, key: []const u8, value: []const u8) KeyChainWriteError!void {
-    if (service.len > 512) return error.ServiceTooLong;
-    if (key.len > 2048) return error.KeyTooLong;
-    if (value.len > 16 * 1024) return error.ValueTooLong;
+    if (service.len > service_max_len) return error.ServiceTooLong;
+    if (key.len > key_max_len) return error.KeyTooLong;
+    if (value.len > value_max_len) return error.ValueTooLong;
 
-    var service_buf: [512 + 1]u8 = undefined;
+    var service_buf: [service_max_len + 1]u8 = undefined;
     const c_service = toNulTerminatedChar(service, service_buf[0..]);
 
-    var key_buf: [2048 + 1]u8 = undefined;
+    var key_buf: [key_max_len + 1]u8 = undefined;
     const c_key = toNulTerminatedChar(key, key_buf[0..]);
 
     // service_buf + key_buf + 1 for separator + 1 for nul
@@ -175,7 +179,7 @@ pub fn set(service: []const u8, key: []const u8, value: []const u8) KeyChainWrit
     label_buf[label.len] = 0;
     const c_label: [:0]c_char = @ptrCast(label_buf[0..label.len :0]);
 
-    var val_buf: [16 * 1024 + 1]u8 = undefined;
+    var val_buf: [value_max_len + 1]u8 = undefined;
     const c_val = toNulTerminatedChar(value, val_buf[0..]);
 
     var err: ?*GError = null;
@@ -197,13 +201,13 @@ pub fn set(service: []const u8, key: []const u8, value: []const u8) KeyChainWrit
 
 const KeyChainDeleteError = error{ ServiceTooLong, KeyTooLong, KeyChainDeleteError };
 pub fn delete(service: []const u8, key: []const u8) KeyChainDeleteError!void {
-    if (service.len > 512) return error.ServiceTooLong;
-    if (key.len > 2048) return error.KeyTooLong;
+    if (service.len > service_max_len) return error.ServiceTooLong;
+    if (key.len > key_max_len) return error.KeyTooLong;
 
-    var service_buf: [512 + 1]u8 = undefined;
+    var service_buf: [service_max_len + 1]u8 = undefined;
     const c_service = toNulTerminatedChar(service, service_buf[0..]);
 
-    var key_buf: [2048 + 1]u8 = undefined;
+    var key_buf: [key_max_len + 1]u8 = undefined;
     const c_key = toNulTerminatedChar(key, key_buf[0..]);
 
     var err: ?*GError = null;
