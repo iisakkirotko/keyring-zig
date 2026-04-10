@@ -212,7 +212,8 @@ pub fn set(service: []const u8, key: []const u8, value: []const u8) KeyChainWrit
     if (status == 0) return error.KeyChainWriteError;
 }
 
-pub fn delete(service: []const u8, key: []const u8) error{ EntryNotFound, InvalidUtf8, KeyChainDeleteError }!void {
+const KeyChainDeleteError = error{ EntryNotFound, InvalidUtf8, KeyChainDeleteError };
+pub fn delete(service: []const u8, key: []const u8) KeyChainDeleteError!void {
     var target_name_buf: [10 * 1024]u16 = undefined;
     const target_name = try makeName(service, key, &target_name_buf);
 

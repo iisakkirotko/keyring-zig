@@ -157,8 +157,8 @@ fn update(cf_service: sec.CFStringRef, cf_key: sec.CFStringRef, cf_value: sec.CF
     if (status != sec.errSecSuccess) return error.KeyChainUpdateError;
 }
 
-const KeyChainSetError = error{ KeyChainCreateError, KeyChainUpdateError, CfStringCreationFailed, CfDataCreationFailed };
-pub fn set(service: []const u8, key: []const u8, value: []const u8) KeyChainSetError!void {
+const KeyChainWriteError = error{ KeyChainCreateError, KeyChainUpdateError, CfStringCreationFailed, CfDataCreationFailed };
+pub fn set(service: []const u8, key: []const u8, value: []const u8) KeyChainWriteError!void {
     const cf_service = try makeCfString(service);
     defer sec.CFRelease(cf_service);
 
