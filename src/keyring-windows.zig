@@ -2,6 +2,9 @@ const std = @import("std");
 
 pub const KeyringWindows = @This();
 
+const service_max_len = 512;
+const key_max_len = 2048;
+
 // =================================================================================
 // Section: Definitions
 // External function declarations for the windows credential manager API
@@ -152,9 +155,12 @@ fn makeName(service: []const u8, key: []const u8, out_buf: []u16) error{InvalidU
     return out_buf[0 .. post_service + post_key + 1 :0];
 }
 
-const KeyChainBufferGetError = KeyChainGetError || std.fmt.BufPrintError || error{ BufferTooSmall, InvalidUtf8 };
+const KeyChainBufferGetError = KeyChainGetError || std.fmt.BufPrintError || error{ BufferTooSmall, InvalidUtf8, ServiceTooLong, KeyTooLong };
 pub fn get(service: []const u8, key: []const u8, out_buf: []u8) KeyChainBufferGetError![]u8 {
-    var target_name_buf: [10 * 1024]u16 = undefined;
+    if (service.len > service_max_len) return error.ServiceTooLong;
+    if (key.len > key_max_len) return error.KeyTooLong;
+
+    var target_name_buf: [service_max_len + key_max_len + 2]u16 = undefined;
     const target_name = try makeName(service, key, &target_name_buf);
 
     var res: ?*CREDENTIALW = null;
@@ -170,8 +176,9 @@ pub fn get(service: []const u8, key: []const u8, out_buf: []u8) KeyChainBufferGe
 
 const KeyChainAllocGetError = KeyChainGetError || std.fmt.BufPrintError || error{ OutOfMemory, InvalidUtf8 };
 pub fn getAlloc(gpa: std.mem.Allocator, service: []const u8, key: []const u8) KeyChainAllocGetError![]u8 {
-    var target_name_buf: [10 * 1024]u16 = undefined;
-    const target_name = try makeName(service, key, &target_name_buf);
+    const target_name_buf = try gpa.alloc(u16, nameLen(service, key));
+    defer gpa.free(target_name_buf);
+    const target_name = try makeName(service, key, target_name_buf);
 
     var res: ?*CREDENTIALW = null;
     try readCred(target_name, &res);
@@ -183,12 +190,15 @@ pub fn getAlloc(gpa: std.mem.Allocator, service: []const u8, key: []const u8) Ke
     return val;
 }
 
-const KeyChainWriteError = error{ InvalidUtf8, KeyChainWriteError };
+const KeyChainWriteError = error{ InvalidUtf8, ServiceTooLong, KeyTooLong, KeyChainWriteError };
 pub fn set(service: []const u8, key: []const u8, value: []const u8) KeyChainWriteError!void {
-    var target_name_buf: [10 * 1024]u16 = undefined;
+    if (service.len > service_max_len) return error.ServiceTooLong;
+    if (key.len > key_max_len) return error.KeyTooLong;
+
+    var target_name_buf: [service_max_len + key_max_len + 2]u16 = undefined;
     const target_name = try makeName(service, key, &target_name_buf);
 
-    var usr_buf: [1024]u16 = undefined;
+    var usr_buf: [key_max_len + 1]u16 = undefined;
     const usr_len = try std.unicode.utf8ToUtf16Le(&usr_buf, key);
     usr_buf[usr_len] = 0;
     const usr = usr_buf[0..usr_len :0];
@@ -212,9 +222,12 @@ pub fn set(service: []const u8, key: []const u8, value: []const u8) KeyChainWrit
     if (status == 0) return error.KeyChainWriteError;
 }
 
-const KeyChainDeleteError = error{ EntryNotFound, InvalidUtf8, KeyChainDeleteError };
+const KeyChainDeleteError = error{ EntryNotFound, InvalidUtf8, ServiceTooLong, KeyTooLong, KeyChainDeleteError };
 pub fn delete(service: []const u8, key: []const u8) KeyChainDeleteError!void {
-    var target_name_buf: [10 * 1024]u16 = undefined;
+    if (service.len > service_max_len) return error.ServiceTooLong;
+    if (key.len > key_max_len) return error.KeyTooLong;
+
+    var target_name_buf: [service_max_len + key_max_len + 2]u16 = undefined;
     const target_name = try makeName(service, key, &target_name_buf);
 
     const status = CredDeleteW(target_name.ptr, @intFromEnum(CRED_TYPE.GENERIC), 0);

@@ -31,6 +31,16 @@ The non-allocating Linux calls currently use fixed stack buffers for NUL-termina
 
 `getAlloc` does not impose those `service` and `key` limits.
 
+## Windows Notes
+
+The non-allocating Windows calls use fixed-size UTF-16 conversion buffers, so they currently impose these input size limits:
+
+- `get`: `service <= 512` bytes, `key <= 2048` bytes
+- `set`: `service <= 512` bytes, `key <= 2048` bytes
+- `delete`: `service <= 512` bytes, `key <= 2048` bytes
+
+`getAlloc` does not impose those `service` and `key` limits.
+
 ## Example
 
 ```zig
