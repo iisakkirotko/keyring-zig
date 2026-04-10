@@ -8,7 +8,7 @@ Small cross-platform keyring access for Zig.
 
 - macOS: supported
 - Windows: supported
-- Linux: planned, not implemented yet
+- Linux: supported via libsecret
 
 ## API
 
@@ -18,6 +18,18 @@ pub fn getAlloc(gpa: std.mem.Allocator, service: []const u8, key: []const u8) ![
 pub fn set(service: []const u8, key: []const u8, value: []const u8) !void
 pub fn delete(service: []const u8, key: []const u8) !void
 ```
+
+## Linux Notes
+
+The Linux backend uses `libsecret`.
+
+The non-allocating Linux calls currently use fixed stack buffers for NUL-terminated C-string conversion, so they impose a few input size limits:
+
+- `get`: `service <= 512` bytes, `key <= 2048` bytes
+- `set`: `service <= 512` bytes, `key <= 2048` bytes, `value <= 16 * 1024` bytes
+- `delete`: `service <= 512` bytes, `key <= 2048` bytes
+
+`getAlloc` does not impose those `service` and `key` limits.
 
 ## Example
 
